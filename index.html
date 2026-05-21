@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>费用报销单生成器</title>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    background: #f2f3f7;
+    padding: 30px 20px;
+    color: #222;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  .header { text-align: center; margin-bottom: 28px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .header p { color: #888; font-size: 13px; margin-top: 4px; }
+
+  .panel {
+    background: #fff;
+    border-radius: 12px;
+    padding: 26px 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+  .panel h2 {
+    font-size: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 4px;
+  }
+  input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #dde;
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fafbfc;
+    transition: border-color .15s;
+  }
+  input:focus { outline: none; border-color: #4A90D9; background: #fff; }
+
+  /* 费用明细表 - 5列 */
+  .expense-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .expense-table th {
+    background: #f5f6f8;
+    padding: 10px 6px;
+    text-align: center;
+    font-weight: 600;
+    color: #555;
+    border: 1px solid #e8e8e8;
+    font-size: 12px;
+  }
+  .expense-table td {
+    padding: 5px 4px;
+    border: 1px solid #e8e8e8;
+    vertical-align: top;
+  }
+  .expense-table input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    padding: 6px 4px;
+    font-size: 13px;
+    border-radius: 0;
+  }
+  .expense-table input:focus { background: #fffbeb; outline: none; }
+  .expense-table .col-no { width: 48px; text-align: center; }
+  .expense-table .col-date { width: 120px; }
+  .expense-table .col-name { }
+  .expense-table .col-purpose { }
+  .expense-table .col-amount { width: 100px; }
+
+  /* 图片槽 */
+  .img-slot {
+    width: 80px;
+    height: 60px;
+    border: 1.5px dashed #dde;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    background: #fafbfc;
+    margin: 2px auto;
+    transition: border-color .15s;
+  }
+  .img-slot:hover { border-color: #4A90D9; background: #f0f5ff; }
+  .img-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    inset: 0;
+  }
+  .img-slot .slot-plus { color: #ccc; font-size: 22px; pointer-events: none; }
+  .img-slot.has-img .slot-plus { display: none; }
+  .img-slot .remove-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+    cursor: pointer;
+    z-index: 2;
+    display: none;
+    line-height: 16px;
+    text-align: center;
+  }
+  .img-slot.has-img:hover .remove-btn { display: block; }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+    justify-content: center;
+  }
+  .btn {
+    padding: 11px 28px;
+    border-radius: 8px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: inherit;
+  }
+  .btn-primary { background: #4A90D9; color: #fff; box-shadow: 0 2px 8px rgba(74,144,217,0.3); }
+  .btn-primary:hover { background: #357ABD; }
+  .btn-add {
+    padding: 5px 14px;
+    font-size: 12px;
+    border-radius: 5px;
+    border: 1px dashed #4A90D9;
+    color: #4A90D9;
+    background: #f8fafd;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .btn-add:hover { background: #eef4fb; }
+  .btn-xs {
+    padding: 3px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid #e74c3c;
+    color: #e74c3c;
+    background: #fff;
+    cursor: pointer;
+  }
+  .btn-xs:hover { background: #fff5f5; }
+
+  .tip {
+    text-align: center;
+    color: #aaa;
+    font-size: 12px;
+    margin-top: 20px;
+  }
+
+  /* ===== 手机端适配 ===== */
+  @media (max-width: 640px) {
+    body { padding: 12px 8px; }
+    .panel { padding: 16px 12px; border-radius: 8px; margin-bottom: 12px; }
+    .header h1 { font-size: 20px; }
+    .header p { font-size: 12px; }
+
+    /* 表单改为单列 */
+    .form-row {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    /* 费用表格横向滚动 */
+    .panel:has(.expense-table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .expense-table { min-width: 600px; font-size: 12px; }
+    .expense-table th, .expense-table td { padding: 6px 3px; }
+    .expense-table input { font-size: 12px; padding: 5px 3px; }
+
+    /* 按钮全宽加大 */
+    .btn { padding: 14px 20px; font-size: 16px; }
+    .btn-row { flex-direction: column; }
+    .btn-primary { width: 100%; }
+
+    /* 图片槽适配 */
+    .img-slot { width: 60px; height: 48px; }
+
+    /* 接收图片区 */
+    .receipt-images-row { gap: 8px; }
+    .receipt-img-box { width: 100px; height: 75px; }
+  }
+
+  /* 每行对应的图片槽编号提示 */
+  .img-slot-num {
+    font-size: 10px;
+    color: #bbb;
+    text-align: center;
+    margin-top: 2px;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <h1>📋 费用报销单生成器</h1>
+    <p>填信息 → 传凭证 → 一键导出排版好的 .xlsx</p>
+  </div>
+
+  <!-- 基本信息 -->
+  <div class="panel">
+    <h2>📌 基本信息</h2>
+    <div class="form-row">
+      <div><label>门店</label><input type="text" id="store" placeholder="如：邳州东兴路店"></div>
+      <div><label>报销人</label><input type="text" id="applicant" placeholder="姓名"></div>
+      <div><label>报销日期</label><input type="date" id="reportDate"></div>
+    </div>
+  </div>
+
+  <!-- 费用明细（5列 + 凭证图槽） -->
+  <div class="panel">
+    <h2>💰 费用明细</h2>
+    <table class="expense-table">
+      <thead>
+        <tr>
+          <th class="col-no">序号</th>
+          <th class="col-date">购买日期</th>
+          <th class="col-name">商品名称</th>
+          <th class="col-purpose">用途</th>
+          <th class="col-amount">金额</th>
+          <th style="width:90px;">凭证图片</th>
+          <th style="width:40px;"></th>
+        </tr>
+      </thead>
+      <tbody id="expenseBody"></tbody>
+    </table>
+    <button class="btn-add" onclick="addRow()">+ 添加一行</button>
+  </div>
+
+  <!-- 按钮 -->
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="generateXlsx()">📥 生成 Excel 费用报销单</button>
+  </div>
+
+  <p class="tip">生成的 .xlsx 完全匹配标准费用报销单格式，Excel / WPS 可直接打开</p>
+</div>
+
+<script>
+  let rowIdx = 0;
+
+  function addRow() {
+    rowIdx++;
+    const no = rowIdx;
+    const tbody = document.getElementById('expenseBody');
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-row', no);
+    tr.innerHTML = `
+      <td style="text-align:center;color:#999;padding-top:10px;">${no}</td>
+      <td><input type="date" class="exp-date"></td>
+      <td><input type="text" class="exp-name" placeholder="如：风扇"></td>
+      <td><input type="text" class="exp-purpose" placeholder="如：门店自用"></td>
+      <td><input type="number" class="exp-amount" placeholder="0.00" step="0.01" min="0"></td>
+      <td>
+        <div class="img-slot" onclick="this.querySelector('input').click()">
+          <span class="slot-plus">+</span>
+          <input type="file" accept="image/*" style="display:none" onchange="slotUpload(this)">
+        </div>
+        <div class="img-slot-num">序号${no}</div>
+      </td>
+      <td style="text-align:center;padding-top:10px;">
+        <button class="btn-xs" onclick="removeRow(this)">删</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function removeRow(btn) {
+    btn.closest('tr').remove();
+    renumber();
+  }
+
+  function renumber() {
+    const rows = document.querySelectorAll('#expenseBody tr');
+    rows.forEach((tr, i) => {
+      tr.querySelector('td').textContent = i + 1;
+      tr.setAttribute('data-row', i + 1);
+      const numLabel = tr.querySelector('.img-slot-num');
+      if (numLabel) numLabel.textContent = '序号' + (i + 1);
+    });
+    rowIdx = rows.length;
+  }
+
+  function slotUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    const slot = input.closest('.img-slot');
+    reader.onload = function(e) {
+      // 清旧图
+      slot.querySelectorAll('img').forEach(i => i.remove());
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.title = file.name;
+      slot.appendChild(img);
+      slot.classList.add('has-img');
+      // 存 base64
+      slot.dataset.src = e.target.result;
+      // 添加删除按钮
+      if (!slot.querySelector('.remove-btn')) {
+        const rm = document.createElement('button');
+        rm.className = 'remove-btn';
+        rm.textContent = '✕';
+        rm.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          slot.querySelectorAll('img').forEach(i => i.remove());
+          slot.classList.remove('has-img');
+          delete slot.dataset.src;
+          this.remove();
+        });
+        slot.appendChild(rm);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ===== 生成 Excel =====
+  async function generateXlsx() {
+    const store = document.getElementById('store').value.trim();
+    const applicant = document.getElementById('applicant').value.trim();
+    const reportDate = document.getElementById('reportDate').value;
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(store || '报销单');
+
+    // ---- 样式 ----
+    const titleFont = { name: 'Microsoft YaHei', size: 16, bold: true };
+    const infoFont = { name: 'Microsoft YaHei', size: 10 };
+    const headerFont = { name: 'Microsoft YaHei', size: 11, bold: true };
+    const bodyFont = { name: 'Microsoft YaHei', size: 10 };
+    const labelFont = { name: 'Microsoft YaHei', size: 11, bold: true };
+    const thinBorder = {
+      top: { style: 'thin' }, bottom: { style: 'thin' },
+      left: { style: 'thin' }, right: { style: 'thin' }
+    };
+    const center = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    const left = { horizontal: 'left', vertical: 'middle', wrapText: true };
+
+    // ---- 辅助：给一行A-E全部加上边框 ----
+    function borderRow(r) {
+      for (let c = 1; c <= 5; c++) {
+        ws.getCell(r, c).border = thinBorder;
+      }
+    }
+
+    // ---- 列宽 ----
+    ws.getColumn('A').width = 20.6;
+    ws.getColumn('B').width = 14;
+    ws.getColumn('C').width = 23;
+    ws.getColumn('D').width = 20.6;
+    ws.getColumn('E').width = 14;
+    ws.getColumn('F').width = 19.6;
+
+    let r = 1;
+
+    // ==== Row 1: 标题 "费用报销单" (A1:E1) ====
+    ws.mergeCells(r, 1, r, 5);
+    const t = ws.getCell(`A${r}`);
+    t.value = '费用报销单';
+    t.font = titleFont;
+    t.alignment = center;
+    borderRow(r);
+    ws.getRow(r).height = 28.5;
+    r++;
+
+    // ==== Row 2: 门店 + 报销人 + 报销日期 (A2:E2) ====
+    ws.mergeCells(r, 1, r, 5);
+    const dateFormatted = reportDate ? reportDate.replace(/-/g, '/') : '';
+    const infoStr = `          门店：${store || '　'}                            报销人：${applicant || '　'}                                 报销日期： ${dateFormatted}`;
+    const info = ws.getCell(`A${r}`);
+    info.value = infoStr;
+    info.font = infoFont;
+    info.alignment = left;
+    borderRow(r);
+    ws.getRow(r).height = 22.5;
+    r++;
+
+    // ==== Row 3: 表头 ====
+    const headers = ['序号', '购买日期', '商品名称', '用途', '金额'];
+    for (let i = 0; i < 5; i++) {
+      const cell = ws.getCell(r, i + 1);
+      cell.value = headers[i];
+      cell.font = headerFont;
+      cell.alignment = center;
+    }
+    borderRow(r);
+    ws.getRow(r).height = 22.5;
+    r++;
+
+    // ==== 收集数据行，按日期排序 ====
+    const rowEls = document.querySelectorAll('#expenseBody tr');
+    let rawRows = [];
+
+    rowEls.forEach((tr) => {
+      const dateVal = tr.querySelector('.exp-date')?.value || '';
+      const nameVal = tr.querySelector('.exp-name')?.value.trim() || '';
+      const purposeVal = tr.querySelector('.exp-purpose')?.value.trim() || '';
+      const amountVal = parseFloat(tr.querySelector('.exp-amount')?.value) || 0;
+      const slot = tr.querySelector('.img-slot');
+      const src = slot?.dataset?.src || '';
+
+      rawRows.push({
+        date: dateVal,
+        name: nameVal,
+        purpose: purposeVal,
+        amount: amountVal,
+        src: src
+      });
+    });
+
+    // 过滤掉全空行（无日期、无名称、无用途、无金额、无图片）
+    rawRows = rawRows.filter(row => row.date || row.name || row.purpose || row.amount > 0 || row.src);
+
+    // 排序：有日期的按日期升序，没日期的排到末尾
+    rawRows.sort((a, b) => {
+      if (!a.date && !b.date) return 0;
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return a.date.localeCompare(b.date);
+    });
+
+    // 写入排序后的数据行
+    let total = 0;
+    const imgData = []; // { no, src } — no 是排序后的新序号
+
+    rawRows.forEach((row, idx) => {
+      const newNo = idx + 1;
+      const displayDate = row.date ? row.date.replace(/-/g, '/') : '';
+
+      const vals = [newNo, displayDate, row.name, row.purpose, row.amount > 0 ? row.amount : ''];
+      for (let i = 0; i < 5; i++) {
+        const cell = ws.getCell(r, i + 1);
+        cell.value = vals[i];
+        cell.font = bodyFont;
+        cell.alignment = center;
+        if (i === 4 && row.amount > 0) cell.numFormat = '#,##0.00';
+      }
+      borderRow(r);
+      ws.getRow(r).height = 22.5;
+
+      if (row.amount > 0) total += row.amount;
+      if (row.src) imgData.push({ no: newNo, src: row.src });
+
+      r++;
+    });
+
+    // ==== 合计行 ====
+    ws.getCell(r, 1).value = '合计金额：';
+    ws.getCell(r, 1).font = bodyFont;
+    ws.getCell(r, 1).alignment = center;
+    ws.getCell(r, 5).value = total > 0 ? total : '';
+    ws.getCell(r, 5).font = bodyFont;
+    ws.getCell(r, 5).alignment = center;
+    if (total > 0) ws.getCell(r, 5).numFormat = '#,##0.00';
+    // 中间列
+    for (let c = 2; c <= 4; c++) {
+      ws.getCell(r, c).font = bodyFont;
+      ws.getCell(r, c).alignment = center;
+    }
+    borderRow(r);
+    ws.getRow(r).height = 22.5;
+    r++;
+
+    // ==== 附件说明行 (merged) ====
+    ws.mergeCells(r, 1, r, 5);
+    ws.getCell(r, 1).value = '附件：请根据报销序号插入对应付款凭证';
+    ws.getCell(r, 1).font = infoFont;
+    ws.getCell(r, 1).alignment = center;
+    borderRow(r);
+    ws.getRow(r).height = 22.5;
+    r++;
+
+    // ==== 图片区 ====
+    // 需要展示的槽位数 = 至少覆盖有图片的序号，至少5个
+    const totalSlots = Math.max(imgData.length, rawRows.length, 5);
+
+    function writeImageSlot(row, col, slotNo) {
+      ws.getCell(row, col).border = thinBorder;
+      ws.getCell(row, col).alignment = center;
+      const match = imgData.find(d => d.no === slotNo);
+      if (!match) return;
+      try {
+        const base64 = match.src.split(',')[1];
+        const ext = (match.src.match(/data:image\/(\w+);/) || [,'png'])[1];
+        const imgId = wb.addImage({ base64, extension: ext });
+        // 图片锚定在单元格内，留 2pt 边距不撑大格子
+        const margin = 12000; // EMU，约 2pt
+        ws.addImage(imgId, {
+          tl: { col: col - 1, row: row - 1, colOff: margin, rowOff: margin },
+          br: { col: col, row: row, colOff: -margin, rowOff: -margin },
+          editAs: 'oneCell'
+        });
+      } catch(e) { console.warn('图片序号' + slotNo + '插入失败', e); }
+    }
+
+    // 动态生成：每5个序号一组（序号标签行 + 图片行），直到覆盖所有槽位
+    let slotStart = 1;
+    while (slotStart <= totalSlots) {
+      const slotEnd = Math.min(slotStart + 4, totalSlots);
+
+      // 序号标签行
+      for (let i = slotStart; i <= slotEnd; i++) {
+        const col = i - slotStart + 1;
+        const cell = ws.getCell(r, col);
+        cell.value = `序号${i}`;
+        cell.font = labelFont;
+        cell.alignment = center;
+      }
+      // 未填满的列也加边框
+      borderRow(r);
+      ws.getRow(r).height = 22.5;
+      r++;
+
+      // 图片行：先锁定行高，再嵌入图片
+      borderRow(r);
+      ws.getRow(r).height = 120;
+      for (let i = slotStart; i <= slotEnd; i++) {
+        const col = i - slotStart + 1;
+        writeImageSlot(r, col, i);
+      }
+      r++;
+
+      slotStart += 5;
+    }
+
+    // ==== 下载 ====
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const filename = `费用报销单_${applicant || '未填'}_${store || ''}_${reportDate || new Date().toISOString().slice(0,10)}.xlsx`;
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // 初始化6行
+  for (let i = 0; i < 6; i++) addRow();
+  document.getElementById('reportDate').value = new Date().toISOString().slice(0, 10);
+</script>
+</body>
+</html>
