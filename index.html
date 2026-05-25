@@ -363,11 +363,11 @@
     const ws = wb.addWorksheet(store || '报销单');
 
     // ---- 样式 ----
-    const titleFont = { name: 'Microsoft YaHei', size: 16, bold: true };
-    const infoFont = { name: 'Microsoft YaHei', size: 10 };
-    const headerFont = { name: 'Microsoft YaHei', size: 11, bold: true };
-    const bodyFont = { name: 'Microsoft YaHei', size: 10 };
-    const labelFont = { name: 'Microsoft YaHei', size: 11, bold: true };
+    const titleFont = { name: '宋体', size: 16, bold: false };
+    const infoFont = { name: '宋体', size: 10, bold: false };
+    const headerFont = { name: '宋体', size: 11, bold: false };
+    const bodyFont = { name: '宋体', size: 10, bold: false };
+    const labelFont = { name: '宋体', size: 11, bold: false };
     const thinBorder = {
       top: { style: 'thin' }, bottom: { style: 'thin' },
       left: { style: 'thin' }, right: { style: 'thin' }
@@ -382,13 +382,13 @@
       }
     }
 
-    // ---- 列宽 ----
-    ws.getColumn('A').width = 20.6;
-    ws.getColumn('B').width = 14;
-    ws.getColumn('C').width = 23;
-    ws.getColumn('D').width = 20.6;
-    ws.getColumn('E').width = 14;
-    ws.getColumn('F').width = 19.6;
+    // ---- 列宽（统一 20） ----
+    ws.getColumn('A').width = 20;
+    ws.getColumn('B').width = 20;
+    ws.getColumn('C').width = 20;
+    ws.getColumn('D').width = 20;
+    ws.getColumn('E').width = 20;
+    ws.getColumn('F').width = 20;
 
     let r = 1;
 
