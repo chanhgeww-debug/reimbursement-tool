@@ -88,6 +88,13 @@
     border-radius: 0;
   }
   .expense-table input:focus { background: #fffbeb; outline: none; }
+.expense-table input[type="date"] {
+  min-height: 28px;
+  color: #333;
+  background: #f5f6f8;
+  border-radius: 3px;
+  text-align: center;
+}
   .expense-table .col-no { width: 48px; text-align: center; }
   .expense-table .col-date { width: 120px; }
   .expense-table .col-name { }
@@ -204,6 +211,7 @@
     .expense-table { min-width: 600px; font-size: 12px; }
     .expense-table th, .expense-table td { padding: 6px 3px; }
     .expense-table input { font-size: 12px; padding: 5px 3px; }
+    .expense-table input[type="date"] { min-height: 32px; font-size: 13px; }
 
     /* 按钮全宽加大 */
     .btn { padding: 14px 20px; font-size: 16px; }
