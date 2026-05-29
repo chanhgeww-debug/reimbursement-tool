@@ -88,10 +88,10 @@
     border-radius: 0;
   }
   .expense-table input:focus { background: #fffbeb; outline: none; }
-.expense-table input[type="date"] {
+.expense-table .exp-date {
   min-height: 28px;
   color: #333;
-  background: #f5f6f8;
+  background: #e8f0fe;
   border-radius: 3px;
   text-align: center;
 }
@@ -211,7 +211,7 @@
     .expense-table { min-width: 600px; font-size: 12px; }
     .expense-table th, .expense-table td { padding: 6px 3px; }
     .expense-table input { font-size: 12px; padding: 5px 3px; }
-    .expense-table input[type="date"] { min-height: 32px; font-size: 13px; }
+    .expense-table .exp-date { min-height: 32px; font-size: 13px; }
 
     /* 按钮全宽加大 */
     .btn { padding: 14px 20px; font-size: 16px; }
@@ -294,7 +294,7 @@
     tr.setAttribute('data-row', no);
     tr.innerHTML = `
       <td style="text-align:center;color:#999;padding-top:10px;">${no}</td>
-      <td><input type="date" class="exp-date"></td>
+      <td><input type="text" class="exp-date" placeholder="年/月/日" inputmode="numeric" pattern="\d{4}[/-]\d{1,2}[/-]\d{1,2}"></td>
       <td><input type="text" class="exp-name" placeholder="如：风扇"></td>
       <td><input type="text" class="exp-purpose" placeholder="如：门店自用"></td>
       <td><input type="number" class="exp-amount" placeholder="0.00" step="0.01" min="0"></td>
@@ -438,8 +438,22 @@
     const rowEls = document.querySelectorAll('#expenseBody tr');
     let rawRows = [];
 
+    // 日期标准化：各种格式 → 可排序的字符串
+    function normalizeDate(raw) {
+      if (!raw) return '';
+      // 统一分隔符为 /
+      let s = raw.replace(/[-.]/g, '/').trim();
+      const parts = s.split('/');
+      if (parts.length !== 3) return raw; // 不规范格式直接返回原文
+      // 补零：5 → 05
+      const y = parts[0].padStart(4, '20');
+      const m = parts[1].padStart(2, '0');
+      const d = parts[2].padStart(2, '0');
+      return `${y}/${m}/${d}`;
+    }
+
     rowEls.forEach((tr) => {
-      const dateVal = tr.querySelector('.exp-date')?.value || '';
+      const dateVal = normalizeDate(tr.querySelector('.exp-date')?.value || '');
       const nameVal = tr.querySelector('.exp-name')?.value.trim() || '';
       const purposeVal = tr.querySelector('.exp-purpose')?.value.trim() || '';
       const amountVal = parseFloat(tr.querySelector('.exp-amount')?.value) || 0;
@@ -472,7 +486,7 @@
 
     rawRows.forEach((row, idx) => {
       const newNo = idx + 1;
-      const displayDate = row.date ? row.date.replace(/-/g, '/') : '';
+      const displayDate = row.date || '';
 
       const vals = [newNo, displayDate, row.name, row.purpose, row.amount > 0 ? row.amount : ''];
       for (let i = 0; i < 5; i++) {
